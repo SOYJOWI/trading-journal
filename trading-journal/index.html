@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal · Small Caps</title>
+    <meta name="description"
+        content="Professional trading journal for small caps. Track trades, statistics, and screenshots.">
+    <link rel="stylesheet" href="styles.css">
+    <!-- SheetJS for Excel reading -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <div class="logo">TJ</div>
+                <div>
+                    <h1>Trading Journal</h1>
+                    <span>Small Caps Tracker</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-green" onclick="openAddTradeModal()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>Add Trade</span>
+                </button>
+                <button class="btn" onclick="exportData()" title="Export JSON Backup">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    <span>Export</span>
+                </button>
+                <button class="btn" onclick="importData()" title="Import JSON Backup">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <span>Import</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab" data-tab="trades" onclick="switchTab('trades')">📋 Trade Log</button>
+            <button class="tab" data-tab="gallery" onclick="switchTab('gallery')">🖼️ Gallery</button>
+            <button class="tab" data-tab="goals" onclick="switchTab('goals')">🎯 Goals</button>
+        </div>
+
+        <!-- Date Filter Bar -->
+        <div class="filter-bar">
+            <div class="filter-dates">
+                <label>From</label>
+                <input type="date" id="filter-from" onchange="applyDateFilter()">
+                <label>To</label>
+                <input type="date" id="filter-to" onchange="applyDateFilter()">
+            </div>
+            <div class="filter-presets">
+                <button class="btn btn-sm filter-preset" onclick="setFilterPreset('today')">Today</button>
+                <button class="btn btn-sm filter-preset" onclick="setFilterPreset('week')">This Week</button>
+                <button class="btn btn-sm filter-preset" onclick="setFilterPreset('month')">This Month</button>
+                <button class="btn btn-sm filter-preset active-preset" onclick="setFilterPreset('all')">All
+                    Time</button>
+            </div>
+            <div class="filter-count" id="filter-count"></div>
+        </div>
+
+        <!-- ====== TAB: DASHBOARD ====== -->
+        <div id="tab-dashboard" class="tab-content fade-in">
+
+            <!-- Import Excel -->
+            <div class="upload-section">
+                <div id="upload-zone" class="upload-zone">
+                    <div class="icon">📂</div>
+                    <h3>Import PropreReports</h3>
+                    <p>Drag & drop your <code>trades.xls</code> file or click to browse</p>
+                    <input type="file" id="excel-file-input" class="hidden-input" accept=".xls,.xlsx" multiple>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card green">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-label">Net P&L</div>
+                    <div id="stat-net-pnl" class="stat-value text-green">-</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-label">Win Rate</div>
+                    <div id="stat-win-rate" class="stat-value text-blue">-</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-label">Avg Win</div>
+                    <div id="stat-avg-win" class="stat-value text-green">-</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">📉</div>
+                    <div class="stat-label">Avg Loss</div>
+                    <div id="stat-avg-loss" class="stat-value text-red">-</div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-icon">⚖️</div>
+                    <div class="stat-label">Profit Factor</div>
+                    <div id="stat-profit-factor" class="stat-value text-white">-</div>
+                </div>
+                <div class="stat-card amber">
+                    <div class="stat-icon">🧮</div>
+                    <div class="stat-label">Expectancy</div>
+                    <div id="stat-expectancy" class="stat-value text-green">-</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-label">Max Drawdown</div>
+                    <div id="stat-max-dd" class="stat-value text-red">-</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-label">Best Trade</div>
+                    <div id="stat-best-trade" class="stat-value text-green">-</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">💀</div>
+                    <div class="stat-label">Worst Trade</div>
+                    <div id="stat-worst-trade" class="stat-value text-red">-</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon">🔄</div>
+                    <div class="stat-label">Avg R:R</div>
+                    <div id="stat-avg-rr" class="stat-value text-blue">-</div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-label">Avg Duration</div>
+                    <div id="stat-avg-duration" class="stat-value text-white">-</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-label">Total Trades</div>
+                    <div id="stat-total-trades" class="stat-value text-white">-</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">💸</div>
+                    <div class="stat-label">Total Comm + Fees</div>
+                    <div id="stat-total-comm" class="stat-value text-red">-</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>📈 Equity / Balance Curve</h3>
+                    <div class="chart-container">
+                        <canvas id="equity-chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>📉 Drawdown</h3>
+                    <div class="chart-container">
+                        <canvas id="drawdown-chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>🎯 Win/Loss Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="distribution-chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>📊 Daily P&L</h3>
+                    <div class="chart-container">
+                        <canvas id="daily-pnl-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== TAB: TRADE LOG ====== -->
+        <div id="tab-trades" class="tab-content" style="display: none;">
+            <div class="table-wrapper">
+                <div class="table-header">
+                    <h3>Trade Log</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-green btn-sm" onclick="openAddTradeModal()">+ Add Trade</button>
+                        <button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear All</button>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IMG</th>
+                                <th onclick="sortTable('symbol')" style="cursor:pointer">Symbol ↕</th>
+                                <th onclick="sortTable('side')" style="cursor:pointer">Side ↕</th>
+                                <th onclick="sortTable('date')" style="cursor:pointer">Date ↕</th>
+                                <th onclick="sortTable('qty')" style="cursor:pointer">Qty ↕</th>
+                                <th onclick="sortTable('net')" style="cursor:pointer">Net P&L ↕</th>
+                                <th>Gross</th>
+                                <th>Comm</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trade-tbody">
+                            <tr>
+                                <td colspan="10" class="no-data-text">No trades yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== TAB: GALLERY ====== -->
+        <div id="tab-gallery" class="tab-content" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 600;">📸 Trade Screenshots</h3>
+            </div>
+            <div id="gallery-grid" class="gallery-grid">
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <div class="icon">🖼️</div>
+                    <h3>No Images Yet</h3>
+                    <p>Add screenshots to your trades by editing them or pasting images when adding new trades.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== TAB: GOALS ====== -->
+        <div id="tab-goals" class="tab-content" style="display: none;">
+            <div class="goals-container">
+                <!-- Goals Config -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <h3 style="font-size: 16px; font-weight: 600;">🎯 Monthly Goals Configuration</h3>
+                        <button class="btn btn-primary btn-sm" onclick="saveGoals()">Save Goals</button>
+                    </div>
+                    <div class="form-row" style="margin-bottom: 12px;">
+                        <div class="form-group">
+                            <label>Monthly P&L Target ($)</label>
+                            <input type="number" id="goal-pnl" step="0.01" placeholder="e.g. 5000">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Loss Per Day ($)</label>
+                            <input type="number" id="goal-max-loss" step="0.01" placeholder="e.g. -200">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Max Trades Per Day</label>
+                            <input type="number" id="goal-max-trades" placeholder="e.g. 10">
+                        </div>
+                        <div class="form-group">
+                            <label>Min Win Rate (%)</label>
+                            <input type="number" id="goal-min-winrate" step="0.1" placeholder="e.g. 55">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Goals Progress (current month) -->
+                <div id="goals-progress" class="goals-progress-grid">
+                    <div class="no-data-text">Set your goals above and save to see progress tracking.</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ===== ADD/EDIT TRADE MODAL ===== -->
+    <div id="trade-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Trade</h3>
+                <button class="btn btn-sm" onclick="closeModal('trade-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="trade-form" onsubmit="event.preventDefault(); saveTrade();">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Symbol *</label>
+                            <input type="text" id="trade-symbol" placeholder="e.g. AAPL" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Side</label>
+                            <select id="trade-side">
+                                <option value="Long">Long</option>
+                                <option value="Short">Short</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="trade-date">
+                        </div>
+                        <div class="form-group">
+                            <label>Qty (shares)</label>
+                            <input type="number" id="trade-qty" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Duration</label>
+                            <input type="text" id="trade-duration" placeholder="0:05:30">
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>Gross P&L</label>
+                            <input type="number" step="0.01" id="trade-gross" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Commission</label>
+                            <input type="number" step="0.01" id="trade-comm" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>ECN Fee</label>
+                            <input type="number" step="0.01" id="trade-ecn" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Net P&L</label>
+                        <input type="number" step="0.01" id="trade-net" placeholder="Auto-calculated if empty">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="trade-notes" placeholder="Trade setup, thoughts, lessons learned..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Screenshot (Ctrl+V to paste, or click/drag)</label>
+                        <div id="paste-zone" class="paste-zone" onclick="handlePasteZoneClick()"
+                            ondragover="event.preventDefault()" ondrop="handlePasteZoneDrop(event)">
+                            <div class="placeholder">
+                                <div style="font-size: 28px; margin-bottom: 8px;">📋</div>
+                                <div>Paste image (Ctrl+V) or drag & drop</div>
+                                <div style="font-size: 11px; margin-top: 4px; color: var(--text-muted);">Supports PNG,
+                                    JPG, WebP</div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('trade-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveTrade()">Save Trade</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== LIGHTBOX ===== -->
+    <div id="lightbox" class="lightbox-overlay">
+        <img src="" alt="Trade screenshot">
+    </div>
+
+    <!-- ===== CONFIRM DIALOG ===== -->
+    <div id="confirm-dialog" class="confirm-overlay">
+        <div class="confirm-dialog">
+            <h4>Confirm</h4>
+            <p>Are you sure?</p>
+            <div class="btns">
+                <button class="btn" onclick="confirmNo()">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmYes()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOAST CONTAINER ===== -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+
+</html>
